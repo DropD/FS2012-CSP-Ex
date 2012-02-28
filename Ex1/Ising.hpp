@@ -1,13 +1,14 @@
 /*
  * Ising.hpp
  * Functions for Ising Simulations using Lattice.hpp
+ * Written for CSP FS 2012 (adapted from the ICP HS 2011 solution)
  * by Rico Häuselmann
  */
 
-#ifndef ICP_ISING
-#define ICP_ISING
+#ifndef CSP_ISING
+#define CSP_ISING
 
-#include "Lattice.hpp"
+#include "NDLattice.hpp"
 #include <cmath>
 
 #define kB 1.
@@ -33,6 +34,40 @@ namespace icp
                     }
                 }
             }
+        }
+    }
+}
+
+namespace csp
+{
+    namespace ising
+    {
+        template<class Iterator, class R>
+        void system_sweep(Iterator begin, Iterator end, double T, int& Etot, int& Mtot, R rng)
+        {
+            for(Iterator it_z = begin, it_z < end, ++it_z)
+            {
+                for(Iterator it_y = (*it_z).begin(), it_y < (*it_z).end(), ++it_y)
+                {
+                }
+            }
+        }
+
+        template<class Lattice, int D, class R>
+        class Ising
+        {
+            pulic:
+            Ising(double T, R rng) : rng(rng) {}
+            void system_sweep() 
+            {
+                csp::iterate<D>
+            }
+            
+            private:
+            Lattice L;
+            R rng;
+            int Etot;
+            int Mtot;
         }
     }
 }

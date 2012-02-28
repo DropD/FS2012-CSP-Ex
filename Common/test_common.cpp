@@ -4,11 +4,76 @@
  * by Rico Häuselmann 24. 02. 2012
  */
 
+#include <iostream>
+
 #include "NDLattice.hpp"
+
+struct print_
+{
+    template<typename Element>
+    void operator() (Element e) { std::cout << e << " "; }
+    void operator() () { std::cout << std::endl; }
+    print_() {}
+} print;
+
+struct none_
+{
+    template<typename Element>
+    void operator() (Element e) { }
+    void operator() () {}
+    none_() {}
+} none;
 
 int main (int argc, char const* argv[])
 {
-    cps::Lattice<int, 3> lattice({{5, 5, 5}});
+    //print_ print;
+    //none_ none;
+    int shapear[3] = {5, 5, 5};
+    boost::array<boost::multi_array<int, 3>::index, 3> shape = {{7, 6, 5}};
+    boost::array<int, 3> shape2 = {{5, 5, 5}};
+
+    csp::Lattice<int, 3> lattice(shape);
+    //csp::Lattice<int, 3> lattice2(5);
+    csp::Lattice<int, 3> lattice3(shape2);
+
+    boost::multi_array<int, 3> mar(shape);
+
+    boost::array<int, 3> idx = {{0, 0, 0}};
+    lattice(idx) = 5;
+    lattice[0][0][0] = 6;
+    lattice[6][5][4] = 6;
+    //lattice.array()[0][0][0] = 4;
+    if(lattice[0][0][0] == 5) std::cout << "True" << std::endl;
+    else std::cout << "False" << std::endl;
+
+    std::cout << "size: " << std::distance(mar.begin(), mar.end()) << std::endl;
+    std::cout << "size: " << std::distance(mar[0].begin(), mar[0].end()) << std::endl;
+    std::cout << "size: " << std::distance(mar[0][0].begin(), mar[0][0].end()) << std::endl;
+
+    mar[0][0][0] = 4;
+    std::cout << mar[0][0][0] << std::endl;
+    std::cout << *(*(*mar.begin()).begin()).begin() << std::endl;
+    std::cout << *(*(*lattice.begin()).begin()).begin() << std::endl;
+
+    //iterations
+    std::cout << "check iteration over Lattice dimensions" << std::endl;
+    csp::iterate<1>(lattice.begin(), lattice.end(), none);
+    csp::iterate<3>(lattice.begin(), lattice.end(), print);
+    //csp::iterate_idx<1>(mar[0], boost::indices[0], print);
+
+    typedef boost::multi_array_types::index_range range;
+
+    boost::multi_array<int, 3>::array_view<2>::type myview = 
+        mar[boost::indices[range(0,2)][1][range(0, 4, 2)] ];
+
+    //boost::multi_array<int, 3>::index_gen idgen =
+    boost::detail::multi_array::index_gen<3, 2> idgen =
+        boost::indices[range(0,2)][1][range(0, 4, 2)];
+
+    boost::multi_array<int, 3>::array_view<2>::type myview2 = 
+        lattice[boost::indices[range(0,2)][1][range(0, 4, 2)] ];
+
+    // random tests
 
     return 0;
 }
