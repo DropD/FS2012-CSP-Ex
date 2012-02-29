@@ -48,20 +48,24 @@ namespace csp
     struct iterate_idx
     {
         template<typename Lattice, typename F>
-        inline iterate_idx(Lattice L,  F fcn)
+        inline iterate_idx(Lattice& L,  F fcn)
         {
+            boost::array<int, D> idx;
             for(int i = 0; i < L.size(); ++i)
             {
-                iterate_idx<D-1>(L, boost::indices[i], fcn);
+                idx[0] = i;
+                iterate_idx<D-1>(L, idx, fcn);
             }
             fcn();
         }
         template<typename Lattice, typename IndexList, typename F>
-        inline iterate_idx(Lattice L,  IndexList idx, F fcn)
+        inline iterate_idx(Lattice& L,  IndexList& idx, F fcn)
         {
-            for(int i = 0; i < L.size(); ++i)
+            int dim = idx.size() - D;
+            for(int i = 0; i < L.shape()[dim]; ++i)
             {
-                iterate_idx<D-1>(L, idx[i], fcn);
+                idx[dim] = i;
+                iterate_idx<D-1>(L, idx, fcn);
             }
             fcn();
         }
@@ -71,7 +75,7 @@ namespace csp
     struct iterate_idx<1>
     {
         template<typename Lattice, typename F>
-        inline iterate_idx(Lattice L, F fcn)
+        inline iterate_idx(Lattice& L, F fcn)
         {
             for(int i = 0; i < L.size(); ++i)
             {
@@ -80,11 +84,13 @@ namespace csp
             fcn();
         }
         template<typename Lattice, typename IndexList, typename F>
-        inline iterate_idx(Lattice L, IndexList idx, F fcn)
+        inline iterate_idx(Lattice& L, IndexList& idx, F fcn)
         {
-            for(int i = 0; i < L.size(); ++i)
+            int dim = idx.size() - 1;
+            for(int i = 0; i < L.shape()[dim]; ++i)
             {
-                fcn(L[idx][i]);
+                idx[dim] = i;
+                fcn(L, idx);
             }
             fcn();
         }
@@ -101,6 +107,7 @@ namespace csp
         typedef boost::detail::multi_array::index_gen<D, D-1> index_gen;
         typedef typename ndarray::template array_view<D-1>::type array_view;
         typedef typename ndarray::reference reference;
+        typedef T element_type;
 
         public:
         // construction
@@ -116,11 +123,11 @@ namespace csp
         //    _lattice = ndarray(shape);
         //}
 
-        // element access
+        // element access USE THIS INSTEAD OF [] !!
         template<typename IndexList> 
         T& operator() (IndexList idx) {return _lattice(idx);}
 
-        // subarray & view access
+        // subarray & view access !! EXPERIMENTAL !!
         reference operator[] (index idx) {return _lattice[idx];}
         // this does not yet totally work, and it uses boost::detail
         array_view operator[] (index_gen idl) {return _lattice[idl];}
@@ -144,6 +151,7 @@ namespace csp
 
         // stuff
         size_t size() {return _lattice.size();}
+        const boost::multi_array_types::size_type* shape() {return _lattice.shape();}
 
         private:
         ndarray _lattice;

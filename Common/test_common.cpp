@@ -12,6 +12,21 @@ struct print_
 {
     template<typename Element>
     void operator() (Element e) { std::cout << e << " "; }
+    template<typename Lattice, typename IndexList>
+    void operator() (Lattice& L, IndexList idx) 
+    { 
+        typename Lattice::element_type e = L(idx);
+        for(int i = 0; i < idx.size(); ++i)
+        {
+            int temp = idx[i];
+            idx[i] = (idx[i] + 1) < L.shape()[i] ? (idx[i] + 1) : 0;
+            e += L(idx);
+            idx[i] = (idx[i] - 2) > 0 ? (idx[i] -2) : (L.shape()[i] - 1);
+            e += L(idx);
+            idx[i] = temp;
+        }
+        std::cout << e << " "; 
+    }
     void operator() () { std::cout << std::endl; }
     print_() {}
 } print;
@@ -57,9 +72,13 @@ int main (int argc, char const* argv[])
 
     //iterations
     std::cout << "check iteration over Lattice dimensions" << std::endl;
-    csp::iterate<1>(lattice.begin(), lattice.end(), none);
+    //csp::iterate<1>(lattice.begin(), lattice.end(), none);
     csp::iterate<3>(lattice.begin(), lattice.end(), print);
-    //csp::iterate_idx<1>(mar[0], boost::indices[0], print);
+    //csp::iterate_idx<1>(mar[0][0], boost::array<int, 2>(0, 0, 0), print);
+    std::cout << "check iteration over Lattice dimensions with stencil" << std::endl;
+    csp::iterate_idx<3>(lattice, print);
+    //boost::array<int, 2> idx2 = {{0, 0}};
+    //std::cout << lattice.shape()[1] << std::endl;
 
     typedef boost::multi_array_types::index_range range;
 
