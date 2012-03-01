@@ -12,6 +12,7 @@
 #include <boost/multi_array.hpp>
 #include <boost/multi_array/iterator.hpp>
 #include <vector>
+#include <iostream>
 
 namespace csp
 {
@@ -43,7 +44,7 @@ namespace csp
         }
     };
 
-    // OR:
+    // OR (supporting stencils:
     template<int D>
     struct iterate_idx
     {
@@ -96,7 +97,55 @@ namespace csp
         }
     };
 
-    template<class T, int D>
+    //struct boundary_conditions
+    //{
+    //    virtual int operator() (int idx, int dim) = 0;
+    //}
+
+    namespace bounds
+    {
+        template<typename T, int D>
+        struct periodic
+        {
+            //boost::array<long int, D> _shape;
+            const boost::multi_array_types::size_type* _shape;
+            template<typename S>
+            periodic(S shape) : _shape(shape) {}
+            inline int operator() (int idx, int dim)
+            {
+                if(idx < 0) return _shape[dim] + idx;
+                else if(idx >= _shape[dim]) return idx - _shape[dim];
+                else return idx;
+            }
+        };
+
+        template<typename S>
+        struct zero_boundaries
+        {
+            S _shape;
+            zero_boundaries(S shape) : _shape(shape) {}
+            inline int operator() (int idx, int dim)
+            {
+                if(0 <= idx < _shape[dim]) return idx;
+                else return 0;
+            }
+        };
+
+        template<typename S>
+        struct mirror_boundaries
+        {
+            S _shape;
+            mirror_boundaries(S shape) : _shape(shape) {}
+            inline int operator() (int idx, int dim)
+            {
+                if(idx < 0) return -idx;
+                else if(idx > _shape[dim]) return 2*_shape[dim] - idx;
+                else return 0;
+            }
+        };
+    };
+
+    template<class T, int D, typename BC = bounds::periodic<T, D> >
     class Lattice
     {
         public:
@@ -111,14 +160,14 @@ namespace csp
 
         public:
         // construction
-        Lattice() : _lattice() {}
-        Lattice(ndarray& start_array) : _lattice(start_array) {}
-        Lattice(boost::array<int, D>& shape) : _lattice(shape) {}
-        Lattice(shape_type& shape) : _lattice(shape) {}
-        // does not work... :(
+        Lattice() : _lattice(), bc(_lattice.shape()) {}
+        Lattice(ndarray& start_array) : _lattice(start_array), bc(_lattice.shape()) {}
+        template<typename S>
+        Lattice(S& shape) : _lattice(shape), bc(_lattice.shape()) {}
+        // still does not work... :( I wonder why...
         //Lattice(int size)
         //{
-        //    shape_type shape;
+        //    boost::array<int, D> shape;
         //    std::fill(shape.begin(), shape.end(), size);
         //    _lattice = ndarray(shape);
         //}
@@ -139,7 +188,13 @@ namespace csp
         template<typename IndexList> 
         T& get_n_left(IndexList idx, int n)
         {
-            idx[n] -= 1;
+            idx[n] = bc(idx[n] - 1, n);
+            return _lattice(idx);
+        }
+        template<typename IndexList> 
+        T& get_n_right(IndexList idx, int n)
+        {
+            idx[n] = bc(idx[n] + 1, n);
             return _lattice(idx);
         }
 
@@ -155,17 +210,18 @@ namespace csp
 
         private:
         ndarray _lattice;
+        BC bc;
     };
 
-    template<class T>
-    class Lattice3 : public Lattice<T, 3>
-    {
-    };
+    //template<class T>
+    //class Lattice3 : public Lattice<T, 3>
+    //{
+    //};
 
-    template<class T>
-    class Lattice2 : public Lattice<T, 2>
-    {
-    };
+    //template<class T>
+    //class Lattice2 : public Lattice<T, 2>
+    //{
+    //};
 
     //template <typename T, typename TPtr, typename NumDims, typename Reference>
     //class lattice_iterator 
