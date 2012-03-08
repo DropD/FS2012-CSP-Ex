@@ -5,34 +5,12 @@
  */
 
 #include <iostream>
+#include <iomanip>
 #include <boost/random.hpp>
 
 #include "NDLattice.hpp"
-
-struct print_
-{
-    template<typename Element>
-    void operator() (Element e) { std::cout << e << " "; }
-    template<typename Lattice, typename IndexList>
-    void operator() (Lattice& L, IndexList idx) 
-    { 
-        typename Lattice::element_type e = L(idx);
-        for(int i = 0; i < idx.size(); ++i)
-        {
-            int temp = idx[i];
-            //idx[i] = (idx[i] + 1) < L.shape()[i] ? (idx[i] + 1) : 0;
-            //using new stencil interface
-            e += L.get_n_left(idx, i);
-            //idx[i] = (idx[i] - 2) > 0 ? (idx[i] -2) : (L.shape()[i] - 1);
-            //using new stencil interface
-            e += L.get_n_right(idx, i);
-            idx[i] = temp;
-        }
-        std::cout << e << " "; 
-    }
-    void operator() () { std::cout << std::endl; }
-    print_() {}
-} print;
+#include "NDIterate.hpp"
+#include "NDAlgorithm.hpp"
 
 struct none_
 {
@@ -55,6 +33,8 @@ struct randint
 
 template <typename R>
 void test_constructors(R rng);
+void test_access();
+void test_stencils();
 
 int main (int argc, char const* argv[])
 {
@@ -66,50 +46,53 @@ int main (int argc, char const* argv[])
     /*
      * testing constructors
      */
+    std::cout << "- check constructors" << std::endl;
     test_constructors(rig);
 
-    boost::array<boost::multi_array<int, 3>::index, 3> shape = {{7, 6, 5}};
+    /*
+     * testing data access
+     */
+    std::cout << "- check data access" << std::endl;
+    test_access();
 
-    boost::multi_array<int, 3> mar(shape);
-    csp::Lattice<int, 3> lattice(shape);
+    /*
+     * testing iterations & stencils
+     */
+    std::cout << "- check iteration over Lattice dimensions with stencil" << std::endl;
+    test_stencils();
 
-    boost::array<int, 3> idx = {{0, 0, 0}};
-    lattice(idx) = 5;
-    lattice[0][0][0] = 6;
-    lattice[6][5][4] = 6;
-    if(lattice[0][0][0] == 5) std::cout << "True" << std::endl;
-    else std::cout << "False" << std::endl;
+    //boost::array<boost::multi_array<int, 3>::index, 3> shape = {{7, 6, 5}};
 
-    std::cout << "size: " << std::distance(mar.begin(), mar.end()) << std::endl;
-    std::cout << "size: " << std::distance(mar[0].begin(), mar[0].end()) << std::endl;
-    std::cout << "size: " << std::distance(mar[0][0].begin(), mar[0][0].end()) << std::endl;
+    //boost::multi_array<int, 3> mar(shape);
+    //csp::Lattice<int, 3> lattice(shape);
 
-    mar[0][0][0] = 4;
-    std::cout << mar[0][0][0] << std::endl;
-    std::cout << *(*(*mar.begin()).begin()).begin() << std::endl;
-    std::cout << *(*(*lattice.begin()).begin()).begin() << std::endl;
+    //boost::array<int, 3> idx = {{0, 0, 0}};
+    //lattice(idx) = 5;
+    //lattice[0][0][0] = 6;
+    //lattice[6][5][4] = 6;
+    //if(lattice[0][0][0] == 5) std::cout << "True" << std::endl;
+    //else std::cout << "False" << std::endl;
 
-    //iterations
-    std::cout << "check iteration over Lattice dimensions" << std::endl;
-    //csp::iterate<1>(lattice.begin(), lattice.end(), none);
-    csp::iterate<3>(lattice.begin(), lattice.end(), print);
-    //csp::iterate_idx<1>(mar[0][0], boost::array<int, 2>(0, 0, 0), print);
-    std::cout << "check iteration over Lattice dimensions with stencil" << std::endl;
-    csp::iterate_idx<3>(lattice, print);
-    //boost::array<int, 2> idx2 = {{0, 0}};
-    //std::cout << lattice.shape()[1] << std::endl;
+    //std::cout << "size: " << std::distance(mar.begin(), mar.end()) << std::endl;
+    //std::cout << "size: " << std::distance(mar[0].begin(), mar[0].end()) << std::endl;
+    //std::cout << "size: " << std::distance(mar[0][0].begin(), mar[0][0].end()) << std::endl;
 
-    typedef boost::multi_array_types::index_range range;
+    //mar[0][0][0] = 4;
+    //std::cout << mar[0][0][0] << std::endl;
+    //std::cout << *(*(*mar.begin()).begin()).begin() << std::endl;
+    //std::cout << *(*(*lattice.begin()).begin()).begin() << std::endl;
 
-    boost::multi_array<int, 3>::array_view<2>::type myview = 
-        mar[boost::indices[range(0,2)][1][range(0, 4, 2)] ];
+    //typedef boost::multi_array_types::index_range range;
 
-    //boost::multi_array<int, 3>::index_gen idgen =
-    boost::detail::multi_array::index_gen<3, 2> idgen =
-        boost::indices[range(0,2)][1][range(0, 4, 2)];
+    //boost::multi_array<int, 3>::array_view<2>::type myview = 
+    //    mar[boost::indices[range(0,2)][1][range(0, 4, 2)] ];
 
-    boost::multi_array<int, 3>::array_view<2>::type myview2 = 
-        lattice[boost::indices[range(0,2)][1][range(0, 4, 2)] ];
+    ////boost::multi_array<int, 3>::index_gen idgen =
+    //boost::detail::multi_array::index_gen<3, 2> idgen =
+    //    boost::indices[range(0,2)][1][range(0, 4, 2)];
+
+    //boost::multi_array<int, 3>::array_view<2>::type myview2 = 
+    //    lattice[boost::indices[range(0,2)][1][range(0, 4, 2)] ];
 
     // random tests
 
@@ -150,10 +133,10 @@ void test_constructors(R rng)
     //csp::Lattice<int, 7> lattice_i4(10);
     //csp::Lattice<double, 7> lattice_d4(10);
     //csp::Lattice<complex, 7> lattice_c4(10);
+    std::cout << "|-- constructors ok" << std::endl;
 }
 
-template <typename R>
-void test_access(R rng)
+void test_access()
 {
     boost::array<int, 5> idx; 
     boost::array<int, 5> shape = {{3, 3, 3, 3, 3}};
@@ -171,4 +154,50 @@ void test_access(R rng)
     lattice(idx) = -42;
     if(lattice(idx) != -42)
         throw "writing using () doesn't work";
+
+    std::cout << "|-- data access ok." << std::endl;
+}
+
+void test_stencils()
+{
+    using csp::algorithm::print;
+    using csp::algorithm::add_direct_neighbors;
+    using csp::algorithm::set_value_;
+    using csp::algorithm::sum_prod_nn_;
+
+    add_direct_neighbors sdn;
+    sum_prod_nn_<double> sum_prod_nn;
+
+    boost::array<int, 2> shape = {{2, 2}};
+    boost::array<int, 2> idx = {{0, 0}};
+
+    csp::Lattice<int, 2> lattice(shape);
+    lattice(idx) = 1;
+
+    std::cout << "|-- 2x2 int lattice, add direct neighbors" << std::endl;
+    csp::iterate::stencil_iterate<2>(lattice, print);
+    for(int i = 0; i < 3; ++i)
+    {
+        csp::iterate::stencil_iterate<2>(lattice, sdn);
+        csp::iterate::stencil_iterate<2>(lattice, print);
+    }
+
+    boost::array<int, 2> shape2 = {{5, 5}};
+    boost::array<int, 2> idx2 = {{2, 2}};
+
+    csp::Lattice<double, 2, csp::bounds::mirror> lattice2(shape2);
+    set_value_<double> set_0_01(0.01);
+    csp::iterate::stencil_iterate<2>(lattice2, set_0_01);
+    lattice2(idx2) = 0.1;
+
+    std::cout << "|-- 5x5 double lattice, add direct neighbors, mirror boundaries" << std::endl;
+    csp::iterate::stencil_iterate<2>(lattice2, print);
+    csp::iterate::stencil_iterate<2>(lattice2, sum_prod_nn);
+    std::cout << "sum of nn_prods: " << sum_prod_nn.result() << std::endl;
+    //std::cout << "sum of nn_prosds: " << sum_prod_nn(lattice2) << std::endl;
+    for(int i = 0; i < 3; ++i)
+    {
+        csp::iterate::stencil_iterate<2>(lattice2, sdn);
+        csp::iterate::stencil_iterate<2>(lattice2, print);
+    }
 }

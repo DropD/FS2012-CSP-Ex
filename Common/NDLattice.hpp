@@ -5,8 +5,8 @@
  * 24. 02. 2012
  */
 
-#ifndef CSP
-#define CSP
+#ifndef CSP_ND_LATTICE
+#define CSP_ND_LATTICE
 
 #include <boost/array.hpp>
 #include <boost/multi_array.hpp>
@@ -14,100 +14,14 @@
 #include <vector>
 #include <iostream>
 
+#include "NDIterate.hpp"
+
 namespace csp
 {
-    template<int D>
-    struct iterate
-    {
-        template<typename Iterator, typename F>
-        inline iterate(Iterator begin, Iterator end, F fcn)
-        {
-            for(Iterator it = begin; it < end; ++it)
-            {
-                iterate<D-1>((*it).begin(), (*it).end(), fcn);
-            }
-            fcn();
-        }
-    };
-
-    template<>
-    struct iterate<1>
-    {
-        template<typename Iterator, typename F>
-        inline iterate(Iterator begin, Iterator end, F fcn)
-        {
-            for(Iterator it = begin; it < end; ++it)
-            {
-                fcn(*it);
-            }
-            fcn();
-        }
-    };
-
-    // OR (supporting stencils:
-    template<int D>
-    struct iterate_idx
-    {
-        template<typename Lattice, typename F>
-        inline iterate_idx(Lattice& L,  F fcn)
-        {
-            boost::array<int, D> idx;
-            for(int i = 0; i < L.size(); ++i)
-            {
-                idx[0] = i;
-                iterate_idx<D-1>(L, idx, fcn);
-            }
-            fcn();
-        }
-        template<typename Lattice, typename IndexList, typename F>
-        inline iterate_idx(Lattice& L,  IndexList& idx, F fcn)
-        {
-            int dim = idx.size() - D;
-            for(int i = 0; i < L.shape()[dim]; ++i)
-            {
-                idx[dim] = i;
-                iterate_idx<D-1>(L, idx, fcn);
-            }
-            fcn();
-        }
-    };
-
-    template<>
-    struct iterate_idx<1>
-    {
-        template<typename Lattice, typename F>
-        inline iterate_idx(Lattice& L, F fcn)
-        {
-            for(int i = 0; i < L.size(); ++i)
-            {
-                fcn(L[i]);
-            }
-            fcn();
-        }
-        template<typename Lattice, typename IndexList, typename F>
-        inline iterate_idx(Lattice& L, IndexList& idx, F fcn)
-        {
-            int dim = idx.size() - 1;
-            for(int i = 0; i < L.shape()[dim]; ++i)
-            {
-                idx[dim] = i;
-                fcn(L, idx);
-            }
-            fcn();
-        }
-    };
-
-    //struct boundary_conditions
-    //{
-    //    virtual int operator() (int idx, int dim) = 0;
-    //}
-
     namespace bounds
     {
-        template<typename T, int D>
         struct periodic
         {
-            //boost::array<long int, D> _shape;
             const boost::multi_array_types::size_type* _shape;
             template<typename S>
             periodic(S shape) : _shape(shape) {}
@@ -119,11 +33,12 @@ namespace csp
             }
         };
 
-        template<typename S>
-        struct zero_boundaries
+        // wth does that do?
+        struct zero
         {
-            S _shape;
-            zero_boundaries(S shape) : _shape(shape) {}
+            const boost::multi_array_types::size_type* _shape;
+            template<typename S>
+            zero(S shape) : _shape(shape) {}
             inline int operator() (int idx, int dim)
             {
                 if(0 <= idx < _shape[dim]) return idx;
@@ -131,21 +46,36 @@ namespace csp
             }
         };
 
-        template<typename S>
-        struct mirror_boundaries
+        struct mirror
         {
-            S _shape;
-            mirror_boundaries(S shape) : _shape(shape) {}
+            const boost::multi_array_types::size_type* _shape;
+            template<typename S>
+            mirror(S shape) : _shape(shape) {}
             inline int operator() (int idx, int dim)
             {
                 if(idx < 0) return -idx;
-                else if(idx > _shape[dim]) return 2*_shape[dim] - idx;
-                else return 0;
+                else if(idx >= _shape[dim]) return 2*_shape[dim] - idx - 2;
+                else return idx;
             }
         };
+    }
+
+    template<typename T>
+    struct set_value_
+    {
+        set_value_(T value) : value(value) {}
+        template<typename Lattice, typename IndexList>
+        void operator() (Lattice &L, IndexList& idx)
+        {
+            L(idx) = value;
+        }
+        void operator() () {}
+        void finalize() {}
+        private:
+        T value;
     };
 
-    template<class T, int D, typename BC = bounds::periodic<T, D> >
+    template<class T, int D, typename BC = bounds::periodic>
     class Lattice
     {
         public:
@@ -202,11 +132,19 @@ namespace csp
         iterator begin() {return _lattice.begin();}
         iterator end() {return _lattice.end();}
         template<typename F>
-        void iterate(F fcn) {iterate<D>(begin(), end(), fcn);}
+        void iterate(F fcn) {iterate::stencil_iterate<D>(this, fcn);}
 
         // stuff
         size_t size() {return _lattice.size();}
         const boost::multi_array_types::size_type* shape() {return _lattice.shape();}
+        //void init_with(T value)
+        //{
+        //    set_value_<T> set_value(value);
+        //    iterate::stencil_iterate<D>(*this, set_value);
+        //}
+        
+        public:
+        static const int dimension = D;
 
         private:
         ndarray _lattice;
