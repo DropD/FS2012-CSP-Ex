@@ -33,19 +33,6 @@ namespace csp
             }
         };
 
-        // wth does that do?
-        struct zero
-        {
-            const boost::multi_array_types::size_type* _shape;
-            template<typename S>
-            zero(S shape) : _shape(shape) {}
-            inline int operator() (int idx, int dim)
-            {
-                if(0 <= idx < _shape[dim]) return idx;
-                else return 0;
-            }
-        };
-
         struct mirror
         {
             const boost::multi_array_types::size_type* _shape;
@@ -87,6 +74,7 @@ namespace csp
         typedef typename ndarray::template array_view<D-1>::type array_view;
         typedef typename ndarray::reference reference;
         typedef T element_type;
+        typedef T element;
 
         public:
         // construction
@@ -94,13 +82,6 @@ namespace csp
         Lattice(ndarray& start_array) : _lattice(start_array), bc(_lattice.shape()) {}
         template<typename S>
         Lattice(S& shape) : _lattice(shape), bc(_lattice.shape()) {}
-        // still does not work... :( I wonder why...
-        //Lattice(int size)
-        //{
-        //    boost::array<int, D> shape;
-        //    std::fill(shape.begin(), shape.end(), size);
-        //    _lattice = ndarray(shape);
-        //}
 
         // element access USE THIS INSTEAD OF [] !!
         template<typename IndexList> 
@@ -127,15 +108,34 @@ namespace csp
             idx[n] = bc(idx[n] + 1, n);
             return _lattice(idx);
         }
+        boost::array<int, D> get_random_index()
+        {
+            boost::array<int, D> idx;
+            for(int i = 0; i < D; ++i)
+            {
+                idx[i] = rand() % shape()[i];
+            }
+            return idx;
+        }
 
         // Iterating
         iterator begin() {return _lattice.begin();}
         iterator end() {return _lattice.end();}
         template<typename F>
-        void iterate(F fcn) {iterate::stencil_iterate<D>(this, fcn);}
+        void iterate(F& fcn) {iterate::stencil_iterate<D>(*this, fcn);}
 
         // stuff
-        size_t size() {return _lattice.size();}
+        size_t system_size() 
+        {
+            size_t size = 1;
+            const boost::multi_array_types::size_type* shape = _lattice.shape();
+            for(int i = 0; i < D; ++i)
+            {
+                size *= shape[i];
+            }
+            return size;
+        }
+        size_t size() { return _lattice.size();}
         const boost::multi_array_types::size_type* shape() {return _lattice.shape();}
         //void init_with(T value)
         //{
@@ -150,39 +150,6 @@ namespace csp
         ndarray _lattice;
         BC bc;
     };
-
-    //template<class T>
-    //class Lattice3 : public Lattice<T, 3>
-    //{
-    //};
-
-    //template<class T>
-    //class Lattice2 : public Lattice<T, 2>
-    //{
-    //};
-
-    //template <typename T, typename TPtr, typename NumDims, typename Reference>
-    //class lattice_iterator 
-    //    : public boost::detail::multi_array::array_iterator<
-    //                                            T
-    //                                          , TPtr
-    //                                          , NumDims
-    //                                          , Reference
-    //                                        >
-    //{
-    //};
-
-    // try extending array_iterator first
-    //template <typename T, typename TPtr, typename NumDims, typename Reference>
-    //class lattice_iterator;
-
-    //template <typename T, typename TPtr, typename NumDims, typename Reference>
-    //class lattice_iterator : public iterator_facade<
-    //                                    lattice_iterator<T, TPtr, NumDims, Reference>
-    //                                  , typename associated_types<T, NumDims>::value_type
-    //                                  , boost::random_access_traversal_tag
-    //                                  , Reference
-    //                                >
 
 }
 

@@ -175,11 +175,11 @@ void test_stencils()
     lattice(idx) = 1;
 
     std::cout << "|-- 2x2 int lattice, add direct neighbors" << std::endl;
-    csp::iterate::stencil_iterate<2>(lattice, print);
+    lattice.iterate(print);
     for(int i = 0; i < 3; ++i)
     {
-        csp::iterate::stencil_iterate<2>(lattice, sdn);
-        csp::iterate::stencil_iterate<2>(lattice, print);
+        lattice.iterate(sdn);
+        lattice.iterate(print);
     }
 
     boost::array<int, 2> shape2 = {{5, 5}};
@@ -187,17 +187,17 @@ void test_stencils()
 
     csp::Lattice<double, 2, csp::bounds::mirror> lattice2(shape2);
     set_value_<double> set_0_01(0.01);
-    csp::iterate::stencil_iterate<2>(lattice2, set_0_01);
+    lattice2.iterate(set_0_01);
     lattice2(idx2) = 0.1;
 
     std::cout << "|-- 5x5 double lattice, add direct neighbors, mirror boundaries" << std::endl;
-    csp::iterate::stencil_iterate<2>(lattice2, print);
-    csp::iterate::stencil_iterate<2>(lattice2, sum_prod_nn);
+    lattice2.iterate(print);
+    lattice2.iterate(sum_prod_nn);
     std::cout << "sum of nn_prods: " << sum_prod_nn.result() << std::endl;
     //std::cout << "sum of nn_prosds: " << sum_prod_nn(lattice2) << std::endl;
     for(int i = 0; i < 3; ++i)
     {
-        csp::iterate::stencil_iterate<2>(lattice2, sdn);
-        csp::iterate::stencil_iterate<2>(lattice2, print);
+        lattice2.iterate(sdn);
+        lattice2.iterate(print);
     }
 }

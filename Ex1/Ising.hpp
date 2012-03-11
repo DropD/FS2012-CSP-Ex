@@ -13,45 +13,11 @@
 
 #define kB 1.
 
-namespace icp
-{
-    namespace ising
-    {
-        template<class Lattice, class R>
-        void system_sweep(Lattice& L, double T, int& Etot, int& Mtot, R rng)
-        {
-            for(int y=0; y<L.size(); ++y)
-            {
-                for(int x=0; x<L.size(); ++x)
-                {
-                    int dE = 2 * L.get_cell(x, y) * L.sum_neighbors(x, y);
-
-                    if(dE < 0 || rng() < std::exp(-dE / T))
-                    {
-                        L.flip_cell(x, y);
-                        Etot += dE;
-                        Mtot += 2 * L.get_cell(x, y);
-                    }
-                }
-            }
-        }
-    }
-}
-
 namespace csp
 {
     namespace ising
     {
-        //template<class Iterator, class R>
-        //void system_sweep(Iterator begin, Iterator end, double T, int& Etot, int& Mtot, R rng)
-        //{
-        //    for(Iterator it_z = begin, it_z < end, ++it_z)
-        //    {
-        //        for(Iterator it_y = (*it_z).begin(), it_y < (*it_z).end(), ++it_y)
-        //        {
-        //        }
-        //    }
-        //}
+        typedef long long int energy;
 
         template<typename T>
         struct Rng
@@ -64,13 +30,18 @@ namespace csp
             double operator() () {return drand48();}
         } default_rng;
 
-        template<typename Lattice, typename R = Rng<double> >
-        struct system_sweep_
+        struct default_irng_ : public Rng<int>
         {
-            typedef typename Lattice::element_type element_type;
+            int operator() () {return rand();}
+        } default_irng;
+
+        template<typename Lattice, typename R = Rng<double> >
+        struct spin_flip_
+        {
+            typedef typename Lattice::element element;
 
             // constructor
-            system_sweep_(double& Temp, element_type& Etot, element_type& Mtot, R& rng = default_rng) : 
+            spin_flip_(double& Temp, energy& Etot, energy& Mtot, R& rng = default_rng) : 
                 rng(rng), Temp(Temp), Etot(Etot), Mtot(Mtot) {}
 
             // inner loop call
@@ -78,10 +49,10 @@ namespace csp
             void operator() (Lattice& L, IndexList& idx)
             {
                 // get the current spin
-                element_type element = L(idx);
+                element e = L(idx);
 
                 // get the sum over all directly neighbored spins
-                element_type neighbor_sum = 0;
+                element neighbor_sum = 0;
                 for(int dim = 0; dim < idx.size(); ++dim)
                 {
                     neighbor_sum += L.get_n_left(idx, dim);
@@ -89,12 +60,12 @@ namespace csp
                 }
 
                 // get delta E
-                element_type dE = 2 * element * neighbor_sum;
+                element dE = 2 * e * neighbor_sum;
 
                 // flip or don't flip & update E and M
                 if(dE < 0 || rng() < std::exp(-dE / Temp))
                 {
-                    L(idx) = -element;
+                    L(idx) = -e;
                     Etot += dE;
                     Mtot += 2 * L(idx);
                 }
@@ -103,18 +74,20 @@ namespace csp
             // between loops call
             void operator() () {}
 
+            void finalize() {}
+        
             R& rng;
             // variables to update
             double& Temp;
-            element_type& Etot;
-            element_type& Mtot;
+            energy& Etot;
+            energy& Mtot;
         };
 
         template<typename Lattice>
         struct get_em_
         {
-            typedef typename Lattice::element_type element_type;
-            typedef std::pair<element_type, element_type> return_type;
+            typedef typename Lattice::element element;
+            typedef std::pair<energy, energy> return_type;
 
             // constructor
             get_em_() : Etot_(0), Mtot_(0) {}
@@ -146,37 +119,94 @@ namespace csp
             }
 
             // variables to update
-            element_type Etot_;
-            element_type Mtot_;
+            energy Etot_;
+            energy Mtot_;
         };
 
         template<class Lattice, class R = Rng<double> >
         class Ising
         {
-            typedef typename Lattice::element_type element_type;
+            typedef typename Lattice::element element;
+            typedef long long int energy;
             typedef typename get_em_<Lattice>::return_type em_type;
 
             public:
-            Ising(Lattice& L, double Temp, R& rng = default_rng) 
-                : L(L), Temp(Temp), rng(rng), system_sweep(Temp, Etot, Mtot, rng),
-                    get_em()
+            Ising(Lattice& L, double _Temp = 0., R& rng = default_rng) 
+                : L(L), Temp(_Temp), rng(rng), 
+                    spin_flip(Temp, Etot, Mtot, rng), get_em()
             {
-                iterate::stencil_iterate<Lattice::dimension>(L, get_em); 
+                L.iterate(get_em); 
                 em_type res = get_em.result();
                 Etot = res.first; Mtot = res.second;
-                std::cout << "Etot: " << Etot << " Mtot: " << Mtot << std::endl;
+                //std::cout << "T: " << Temp << " Etot: " << Etot << " Mtot: " << Mtot << std::endl;
             }
 
             void step()
             {
+                for(int i = 0; i < L.system_size(); ++i)
+                {
+                    boost::array<int, Lattice::dimension> idx;
+                    idx = L.get_random_index();
+                    spin_flip(L, idx);
+                }
+                //L.iterate(spin_flip);
+                //std::cout << "T: " << Temp << " Etot: " << Etot << " Mtot: " << Mtot << std::endl;
+            }
+
+            boost::multi_array<double, 2> T_run(double T_begin, double T_end, int Tsteps, int nsteps)
+            {
+                // create result array
+                double dT = (T_end - T_begin) / (double)(Tsteps);
+                boost::array<int, 2> shape = {Tsteps, 5};
+                boost::multi_array<double, 2> results(shape);
+
+                // loop over T
+                for(int t = 0; t < Tsteps; ++t)
+                {
+                    Temp = T_begin + t*dT;
+                    double Esum    = 0;
+                    double E2sum   = 0;
+                    double Msum    = 0;
+                    double M2sum   = 0;
+
+                    double N = (double)(nsteps);
+                    double S = (double)(L.system_size());
+
+                    // make nsteps sweeps and measure
+                    for(int i = 0; i < nsteps; ++i)
+                    {
+                        step();
+
+                        Esum    += Etot;
+                        E2sum   += Etot * Etot;
+                        Msum    += Mtot;
+                        M2sum   += Mtot * Mtot;
+
+                        //if(i % 10 == 0) std::cout << "T = " << Temp << " Etot2 = " << Etot*Etot << " E2sum = " << E2sum/i << " Esum2 = " << Esum*Esum/i/i << std::endl;
+                    }
+
+                    // process data
+                    double E_avg = Esum           / N;
+                    double M_avg = std::abs(Msum) / N;
+                    double Xi    = ((M2sum / N) - (M_avg * M_avg)) / Temp;
+                    double Cv    = ((E2sum / N) - (E_avg * E_avg)) / (Temp * Temp);
+
+                    // save results
+                    results[t][0] = Temp;
+                    results[t][1] = E_avg / S;
+                    results[t][2] = M_avg / S;
+                    results[t][3] = Xi    / S;
+                    results[t][4] = Cv    / S;
+                }
+                return results;
             }
             
             private:
             Lattice& L;
             double Temp;
-            element_type Etot;
-            element_type Mtot;
-            system_sweep_<Lattice, R> system_sweep;
+            energy Etot;
+            energy Mtot;
+            spin_flip_<Lattice, R> spin_flip;
             R& rng;
 
             get_em_<Lattice> get_em;
