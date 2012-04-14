@@ -6,11 +6,16 @@
 
 #include <iostream>
 #include <iomanip>
+#include <string>
 #include <boost/random.hpp>
+#include <boost/timer/timer.hpp>
+#include <boost/mpl/bool.hpp>
 
 #include "NDLattice.hpp"
+#include "NDLattice_v2.hpp"
 #include "NDIterate.hpp"
 #include "NDAlgorithm.hpp"
+#include "random_msk.hpp"
 
 struct none_
 {
@@ -35,6 +40,8 @@ template <typename R>
 void test_constructors(R rng);
 void test_access();
 void test_stencils();
+void test_speed();
+void test_v2();
 
 int main (int argc, char const* argv[])
 {
@@ -46,57 +53,62 @@ int main (int argc, char const* argv[])
     /*
      * testing constructors
      */
-    std::cout << "- check constructors" << std::endl;
-    test_constructors(rig);
+    //std::cout << "- check constructors" << std::endl;
+    //test_constructors(rig);
 
     /*
      * testing data access
      */
-    std::cout << "- check data access" << std::endl;
-    test_access();
+    //std::cout << "- check data access" << std::endl;
+    //test_access();
 
     /*
      * testing iterations & stencils
      */
-    std::cout << "- check iteration over Lattice dimensions with stencil" << std::endl;
-    test_stencils();
+    //std::cout << "- check iteration over Lattice dimensions with stencil" << std::endl;
+    //test_stencils();
 
-    //boost::array<boost::multi_array<int, 3>::index, 3> shape = {{7, 6, 5}};
+    /*
+     * testing speed
+     */
+    std::cout << "- check speed of various operations" << std::endl;
+    test_speed();
 
-    //boost::multi_array<int, 3> mar(shape);
-    //csp::Lattice<int, 3> lattice(shape);
-
-    //boost::array<int, 3> idx = {{0, 0, 0}};
-    //lattice(idx) = 5;
-    //lattice[0][0][0] = 6;
-    //lattice[6][5][4] = 6;
-    //if(lattice[0][0][0] == 5) std::cout << "True" << std::endl;
-    //else std::cout << "False" << std::endl;
-
-    //std::cout << "size: " << std::distance(mar.begin(), mar.end()) << std::endl;
-    //std::cout << "size: " << std::distance(mar[0].begin(), mar[0].end()) << std::endl;
-    //std::cout << "size: " << std::distance(mar[0][0].begin(), mar[0][0].end()) << std::endl;
-
-    //mar[0][0][0] = 4;
-    //std::cout << mar[0][0][0] << std::endl;
-    //std::cout << *(*(*mar.begin()).begin()).begin() << std::endl;
-    //std::cout << *(*(*lattice.begin()).begin()).begin() << std::endl;
-
-    //typedef boost::multi_array_types::index_range range;
-
-    //boost::multi_array<int, 3>::array_view<2>::type myview = 
-    //    mar[boost::indices[range(0,2)][1][range(0, 4, 2)] ];
-
-    ////boost::multi_array<int, 3>::index_gen idgen =
-    //boost::detail::multi_array::index_gen<3, 2> idgen =
-    //    boost::indices[range(0,2)][1][range(0, 4, 2)];
-
-    //boost::multi_array<int, 3>::array_view<2>::type myview2 = 
-    //    lattice[boost::indices[range(0,2)][1][range(0, 4, 2)] ];
+    /*
+     * testing v2
+     */
+    //std::cout << "- check basics of v2" << std::endl;
+    //test_v2();
 
     // random tests
 
     return 0;
+}
+
+#define T_MSG(msg, timer)           \
+    std::cout << msg;               \
+    std::cout << timer.format();    
+
+void test_v2()
+{
+    boost::timer::cpu_timer ctimer;
+
+    //boost::array<int, 3> shape_v2 = {10, 10, 10};
+    csp_v2::Lattice<int, 3, boost::mpl::bool_<true> > lv2(10, 1);
+    //csp_v2::Lattice<int, 3, boost::mpl::bool_<false> > lv2_s(shape_v2);
+    
+    std::cout << "|-+ construct 400*400*400 int lattice and set all elements 1" << std::endl;
+    ctimer = boost::timer::cpu_timer();
+    ctimer.stop();
+    csp_v2::Lattice<int, 3, boost::mpl::bool_<true> > lv2_hc(400, 1);
+    T_MSG(       "  |-- constructed lattice & set all elements: ", ctimer);
+
+    std::cout << lv2[0][0][0] << std::endl;
+    //std::cout << "DEBUG MAIN.1.0" << std::endl;
+    std::cout << lv2_hc[0][0][0] << std::endl;
+    //std::cout << "DEBUG MAIN.1.1" << std::endl;
+    csp_v2::Lattice<int, 5, boost::mpl::false_> lv2_5(4);
+    std::cout << lv2_5[0][1][2][3][0] << std::endl;
 }
 
 bool is_not_ten(int x)
@@ -134,6 +146,148 @@ void test_constructors(R rng)
     //csp::Lattice<double, 7> lattice_d4(10);
     //csp::Lattice<complex, 7> lattice_c4(10);
     std::cout << "|-- constructors ok" << std::endl;
+}
+
+//void message(std::string msg, boost::timer::auto_cpu_timer timer)
+//{
+//    timer.stop();
+//    std::cout << msg;
+//    timer.report();
+//    timer.resume();
+//}
+
+void test_speed()
+{
+    int L;
+    boost::timer::cpu_timer ctimer;
+    boost::timer::cpu_timer itimer;
+
+    csp::algorithm::set_value_<int> init_one(1);
+    csp::algorithm::add_direct_neighbors nn_sum;
+    /*
+     * 6D, L=10, int
+     */
+    //L = 20;
+    //std::cout << "|-+ int, 6D, L=" << L << " N=" << L*L*L*L*L*L << std::endl;
+
+    //boost::array<int, 6> speed_6d_shape = {L, L, L, L, L, L};
+
+    //ctimer = boost::timer::cpu_timer();
+    //csp::Lattice<int, 6> speed_6d_lattice(speed_6d_shape);
+    //ctimer.stop();
+    //T_MSG(       "  |-- constructed lattice: ", ctimer);
+
+    //itimer = boost::timer::cpu_timer();
+    //speed_6d_lattice.iterate(init_one);
+    //itimer.stop();
+    //T_MSG(       "  |-- set all elements one: ", itimer);
+
+    //itimer = boost::timer::cpu_timer();
+    //speed_6d_lattice.iterate(nn_sum);
+    //itimer.stop();
+    //T_MSG(       "  |-- added nn for all elements: ", itimer);
+
+    //std::cout << "  |-- first element: " << speed_6d_lattice[0][0][0][0][0][0] << std::endl;
+
+    /*
+     * 3D, L=400, int
+     */
+    L = 400;
+    std::cout << "|-+ int, 3D, L=" << L << " N=" << L * L * L << std::endl;
+
+    boost::array<int, 3> speed_3d_shape = {L, L, L};
+
+    ctimer = boost::timer::cpu_timer();
+    csp::Lattice<int, 3> speed_3d_lattice(speed_3d_shape);
+    ctimer.stop();
+    T_MSG(       "  |-- constructed lattice: ", ctimer);
+
+    itimer = boost::timer::cpu_timer();
+    speed_3d_lattice.iterate(init_one);
+    itimer.stop();
+    T_MSG(       "  |-- set all elements one: ", itimer);
+
+    itimer = boost::timer::cpu_timer();
+    speed_3d_lattice.iterate(nn_sum);
+    itimer.stop();
+    T_MSG(       "  |-- added nn for all elements: ", itimer);
+
+    /*
+     * 3D, L=400, int
+     */
+    L = 400;
+    std::cout << "|-+ V2: int, 3D, L=" << L << " N=" << L * L * L << std::endl;
+
+    ctimer = boost::timer::cpu_timer();
+    csp_v2::Lattice<int, 3, boost::mpl::bool_<false> > speed_3d_lattice_v2(L);
+    ctimer.stop();
+    T_MSG(       "  |-- constructed lattice: ", ctimer);
+
+    itimer = boost::timer::cpu_timer();
+    speed_3d_lattice_v2.iterate(init_one);
+    itimer.stop();
+    T_MSG(       "  |-- set all elements one: ", itimer);
+
+    itimer = boost::timer::cpu_timer();
+    speed_3d_lattice_v2.iterate(nn_sum);
+    itimer.stop();
+    T_MSG(       "  |-- added nn for all elements: ", itimer);
+
+    /*
+     * no overhead comparison
+     */
+    //L = 400;
+    //std::cout << "|-+ Comparison: int, 3D, L=" << L << " N=" << L * L * L 
+    //          << " simple multi_array & for loop "<< std::endl;
+
+    //boost::array<int, 1> bc_shape = {L+2};
+
+    //ctimer = boost::timer::cpu_timer();
+    //boost::multi_array<int, 3> speed_3d_array(speed_3d_shape);
+    ////boost::array<boost::array<boost::array<int, 400>, 400>, 400> speed_3d_array;
+    //boost::multi_array<int, 1> bc(bc_shape);
+    ////boost::array<int, 402> bc;
+    //bc[0] = L-1;
+    //bc[L+1] = 0;
+    //for(int i = 1; i < L+1; ++i)
+    //{
+    //    bc[i] = i - 1;
+    //}
+    //ctimer.stop();
+    //T_MSG(       "  |-- constructed array & bc_array: ", ctimer);
+
+    //itimer = boost::timer::cpu_timer();
+    //for(int x = 0; x < L; ++x)
+    //{
+    //    for(int y = 0; y < L; ++y)
+    //    {
+    //        for(int z = 0; z < L; ++z)
+    //        {
+    //            speed_3d_array[x][y][z] = 1;
+    //        }
+    //    }
+    //}
+    //itimer.stop();
+    //T_MSG(       "  |-- set all elements one: ", itimer);
+
+    //itimer = boost::timer::cpu_timer();
+    //for(int x = 0; x < L; ++x)
+    //{
+    //    for(int y = 0; y < L; ++y)
+    //    {
+    //        for(int z = 0; z < L; ++z)
+    //        {
+    //            speed_3d_array[x][y][z] += speed_3d_array[x][y][bc[z-1+1]]
+    //                + speed_3d_array[x][y][bc[z+1+1]]
+    //                + speed_3d_array[x][bc[y-1+1]][z]
+    //                + speed_3d_array[x][bc[y+1+1]][z]
+    //                + speed_3d_array[bc[x-1+1]][y][z]
+    //                + speed_3d_array[bc[x+1+1]][y][z];
+    //        }
+    //    }
+    //}
+    //itimer.stop();
+    //T_MSG(       "  |-- added nn for all elements: ", itimer);
 }
 
 void test_access()

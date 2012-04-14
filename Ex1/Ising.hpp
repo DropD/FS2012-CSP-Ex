@@ -19,6 +19,44 @@ namespace csp
     {
         typedef long long int energy;
 
+        inline void update_exp(double T, boost::array<double, 7>& exp)
+        {
+            for(int i = 0; i < 7; ++i)
+            {
+                exp[i] = std::exp(2 * (2 * i - 6) / T);
+            }
+        }
+
+        inline double cached_exp(int dE, boost::array<double, 7>& exp)
+        {
+            switch(dE)
+            {
+                case -12:
+                    return exp[0];
+                    break;
+                case -8:
+                    return exp[1];
+                    break;
+                case -4:
+                    return exp[2];
+                    break;
+                case 0:
+                    return exp[3];
+                    break;
+                case 4:
+                    return exp[4];
+                    break;
+                case 8:
+                    return exp[5];
+                    break;
+                case 12:
+                    return exp[6];
+                    break;
+                default:
+                    throw "Impossible dE value in cached_exp";
+            }
+        }
+
         template<typename T>
         struct Rng
         {
@@ -35,14 +73,15 @@ namespace csp
             int operator() () {return rand();}
         } default_irng;
 
-        template<typename Lattice, typename R = Rng<double> >
+        template<typename Lattice, typename R = double()>
         struct spin_flip_
         {
             typedef typename Lattice::element element;
 
             // constructor
-            spin_flip_(double& Temp, energy& Etot, energy& Mtot, R& rng = default_rng) : 
-                rng(rng), Temp(Temp), Etot(Etot), Mtot(Mtot) {}
+            spin_flip_(double& Temp, energy& Etot, energy& Mtot, 
+                       boost::array<double, 7>& exp, R& rng = drand48) : 
+                rng(rng), Temp(Temp), Etot(Etot), Mtot(Mtot), exp(exp) {}
 
             // inner loop call
             template<typename IndexList>
@@ -63,7 +102,7 @@ namespace csp
                 element dE = 2 * e * neighbor_sum;
 
                 // flip or don't flip & update E and M
-                if(dE < 0 || rng() < std::exp(-dE / Temp))
+                if(dE < 0 || rng() < cached_exp(-dE, exp))
                 {
                     L(idx) = -e;
                     Etot += dE;
@@ -81,6 +120,9 @@ namespace csp
             double& Temp;
             energy& Etot;
             energy& Mtot;
+
+            // exp cache
+            boost::array<double, 7>& exp;
         };
 
         template<typename Lattice>
@@ -123,7 +165,7 @@ namespace csp
             energy Mtot_;
         };
 
-        template<class Lattice, class R = Rng<double> >
+        template<class Lattice, typename R = double()>
         class Ising
         {
             typedef typename Lattice::element element;
@@ -131,9 +173,10 @@ namespace csp
             typedef typename get_em_<Lattice>::return_type em_type;
 
             public:
-            Ising(Lattice& L, double _Temp = 0., R& rng = default_rng) 
-                : L(L), Temp(_Temp), rng(rng), 
-                    spin_flip(Temp, Etot, Mtot, rng), get_em()
+            // constructor
+            Ising(Lattice& L, double _Temp = 0., R& _rng = drand48) 
+                : L(L), Temp(_Temp), rng(_rng), 
+                    spin_flip(Temp, Etot, Mtot, exp, _rng), get_em()
             {
                 L.iterate(get_em); 
                 em_type res = get_em.result();
@@ -143,6 +186,8 @@ namespace csp
 
             void step()
             {
+                update_exp(Temp, exp);
+
                 for(int i = 0; i < L.system_size(); ++i)
                 {
                     boost::array<int, Lattice::dimension> idx;
@@ -208,6 +253,7 @@ namespace csp
             energy Mtot;
             spin_flip_<Lattice, R> spin_flip;
             R& rng;
+            boost::array<double, 7> exp;
 
             get_em_<Lattice> get_em;
         };

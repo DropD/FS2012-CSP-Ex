@@ -8,6 +8,7 @@
 #ifndef CSP_ND_LATTICE
 #define CSP_ND_LATTICE
 
+#include <boost/smart_ptr.hpp>
 #include <boost/array.hpp>
 #include <boost/multi_array.hpp>
 #include <boost/multi_array/iterator.hpp>
@@ -45,24 +46,29 @@ namespace csp
                 else return idx;
             }
         };
+
+        struct hc_periodic_lookup
+        {
+            //boost::array<int, N+2> table;
+            boost::shared_array<int> table;
+            hc_periodic_lookup(int length) : table(new int[length])
+            {
+                table[0] = length+1;
+                table[length-1] = 0;
+
+                for(int i = 1; i < length+1; ++i)
+                {
+                    table[i] =  i;
+                }
+            }
+            inline int operator() (int idx, int dim)
+            {
+                return table[idx];
+            }
+        };
     }
 
-    template<typename T>
-    struct set_value_
-    {
-        set_value_(T value) : value(value) {}
-        template<typename Lattice, typename IndexList>
-        void operator() (Lattice &L, IndexList& idx)
-        {
-            L(idx) = value;
-        }
-        void operator() () {}
-        void finalize() {}
-        private:
-        T value;
-    };
-
-    template<class T, int D, typename BC = bounds::periodic>
+    template<class T, int D, typename BC = bounds::periodic, typename R = int()>
     class Lattice
     {
         public:
@@ -78,10 +84,10 @@ namespace csp
 
         public:
         // construction
-        Lattice() : _lattice(), bc(_lattice.shape()) {}
-        Lattice(ndarray& start_array) : _lattice(start_array), bc(_lattice.shape()) {}
+        Lattice() : _lattice(), bc(_lattice.shape()), rng(rand) {}
+        Lattice(ndarray& start_array) : _lattice(start_array), bc(_lattice.shape()), rng(rand) {}
         template<typename S>
-        Lattice(S& shape) : _lattice(shape), bc(_lattice.shape()) {}
+        Lattice(S& shape, R& rng = rand) : _lattice(shape), bc(_lattice.shape()), rng(rng) {}
 
         // element access USE THIS INSTEAD OF [] !!
         template<typename IndexList> 
@@ -113,7 +119,7 @@ namespace csp
             boost::array<int, D> idx;
             for(int i = 0; i < D; ++i)
             {
-                idx[i] = rand() % shape()[i];
+                idx[i] = rng() % shape()[i];
             }
             return idx;
         }
@@ -149,7 +155,32 @@ namespace csp
         private:
         ndarray _lattice;
         BC bc;
+        R& rng;
     };
+
+    /*
+    template<class T, typename BC, typename R>
+    class Lattice<T, 3, BC, R>
+    {
+        public:
+        typedef boost::multi_array<T, 3> ndarray;
+        typedef typename ndarray::index index;
+        typedef boost::array<index, 3> shape_type;
+        typedef T element;
+
+        public:
+        // construction
+        Lattice() : _lattice(), bc(_lattice.shape()) {}
+        Lattice(ndarray& start_array) : _lattice(start_array), bc(_lattice.shape()) {}
+        template<typename S>
+        Lattice(S& shape, R& rng = rand) : _lattice(shape), bc(_lattice.shape()), rng(rng) {}
+
+        private:
+        ndarray _lattice;
+        BC bc;
+        R& rng;
+    };
+    */
 
 }
 
