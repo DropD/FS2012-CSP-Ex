@@ -16,6 +16,7 @@
 #include <iostream>
 
 #include "NDIterate.hpp"
+#include "NDAlgorithm.hpp"
 
 namespace csp
 {
@@ -23,6 +24,7 @@ namespace csp
     {
         struct periodic
         {
+            periodic() {}
             const boost::multi_array_types::size_type* _shape;
             template<typename S>
             periodic(S shape) : _shape(shape) {}
@@ -88,6 +90,19 @@ namespace csp
         Lattice(ndarray& start_array) : _lattice(start_array), bc(_lattice.shape()), rng(rand) {}
         template<typename S>
         Lattice(S& shape, R& rng = rand) : _lattice(shape), bc(_lattice.shape()), rng(rng) {}
+        Lattice(int L, T init_value, R& rng = rand) : _lattice(), bc(), rng(rng) 
+        {
+            boost::array<int, D> shape;
+            std::fill(shape.begin(), shape.end(), L);
+            _lattice.resize(shape);
+            bc = BC(_lattice.shape());
+
+            if(init_value != 0)
+            {
+                algorithm::set_value_<T> init(init_value);
+                iterate(init);
+            }
+        }
 
         // element access USE THIS INSTEAD OF [] !!
         template<typename IndexList> 
