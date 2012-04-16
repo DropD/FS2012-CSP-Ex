@@ -1,0 +1,8 @@
+starting ising simulation.
+starting ising simulation.
+starting ising simulation.
+starting ising simulation.
+ 21.268806s wall, 21.060000s user + 0.010000s system = 21.070000s CPU (99.1%)
+ 91.313411s wall, 90.970000s user + 0.060000s system = 91.030000s CPU (99.7%)
+ 192.648671s wall, 192.160000s user + 0.130000s system = 192.290000s CPU (99.8%)
+ 322.437212s wall, 321.930000s user + 0.150000s system = 322.080000s CPU (99.9%)

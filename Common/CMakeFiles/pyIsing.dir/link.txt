@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -DNDEBUG -dynamiclib -Wl,-headerpad_max_install_names   -o libpyIsing.dylib -install_name /Users/ricoh/ETH/RW/CSP/Ex/Common/libpyIsing.dylib CMakeFiles/pyIsing.dir/pyIsing.cpp.o -L/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7 -lboost_python-mt 
