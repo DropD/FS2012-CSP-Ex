@@ -1,0 +1,56 @@
+in main:
+    - read input file(s), instanciate & initialize parameter
+    - instanciate & initialize configuration
+    - start main loop
+
+Simulation:
+    - Keep a list of particles
+    - Holds Configuration
+    - Keep a list of Algorithms to run per step [Strategy]
+        * Forces
+        * Pos_Vel
+    - Keep a list of Observers
+    - Algos & Observers with boost::fusion ??
+
+    - Interface:
+        * add_algorithm     (Algorithm a)
+        * add_observer      (Observer o)
+        * read_parameters   (std::istream input)
+        * calculate_forces  () <-.
+        * calcualte_pos_vel () <-|
+        * step              () --' <-.
+        * run               () ------'
+
+Parameter:
+    - Holds Parameter sets
+
+Parameter_Set:
+    - holds a bool enable
+    - holds all parameter values for a feature
+
+Configuration:
+    - Holds positions & velocities
+    - is passed to Observers
+
+Algorithm:
+    - needs Access to conf: pos & vel
+    - needs Access to param
+    
+    - Examples:
+        * Verlet
+        * Lennard-Jones
+        * Cell-list updates?
+
+    - 3 classes:
+        * force_calc
+        * integrator
+        * neighbors
+
+    - force_calc interface:
+        * operator()        (std::vector<int> neighbors)
+
+    - integrator interface:
+        * operator()        ()
+
+    - neighbors interface:
+        * operator()        (point<int> i)          =>  std::vector<int>
