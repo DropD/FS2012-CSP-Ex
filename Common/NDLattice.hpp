@@ -90,7 +90,7 @@ namespace csp
         Lattice(ndarray& start_array) : _lattice(start_array), bc(_lattice.shape()), rng(rand) {}
         template<typename S>
         Lattice(S& shape, R& rng = rand) : _lattice(shape), bc(_lattice.shape()), rng(rng) {}
-        Lattice(int L, T init_value, R& rng = rand) : _lattice(), bc(), rng(rng) 
+        Lattice(int L, T init_value = 0, R& rng = rand) : _lattice(), bc(), rng(rng) 
         {
             boost::array<int, D> shape;
             std::fill(shape.begin(), shape.end(), L);

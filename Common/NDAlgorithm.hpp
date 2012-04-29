@@ -28,11 +28,7 @@ namespace csp
             template<typename Lattice>
             inline void operator() (Lattice& L, int x, int y, int z)
             {
-//                std::cout << "DEBUG NDA1.0" << std::endl;
                 L[x][y][z] = value;
-//                std::cout << "DEBUG NDA1.1" << std::endl;
-                //L.get_cell(x, y, z) = value;
-//                std::cout << "DEBUG NDA1.2" << std::endl;
             }
             inline void operator() () {}
             inline void finalize() {}

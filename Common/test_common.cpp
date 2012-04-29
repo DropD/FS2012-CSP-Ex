@@ -195,10 +195,10 @@ void test_speed()
     L = 400;
     std::cout << "|-+ int, 3D, L=" << L << " N=" << L * L * L << std::endl;
 
-    boost::array<int, 3> speed_3d_shape = {L, L, L};
+    //boost::array<int, 3> speed_3d_shape = {L, L, L};
 
     ctimer = boost::timer::cpu_timer();
-    csp::Lattice<int, 3> speed_3d_lattice(speed_3d_shape);
+    csp::Lattice<int, 3> speed_3d_lattice(L);
     ctimer.stop();
     T_MSG(       "  |-- constructed lattice: ", ctimer);
 
@@ -213,10 +213,10 @@ void test_speed()
     T_MSG(       "  |-- added nn for all elements: ", itimer);
 
     /*
-     * 3D, L=400, int
+     * 3D, L=400, int, non-hc
      */
     L = 400;
-    std::cout << "|-+ V2: int, 3D, L=" << L << " N=" << L * L * L << std::endl;
+    std::cout << "|-+ V2: non-hc, int, 3D, L=" << L << " N=" << L * L * L << std::endl;
 
     ctimer = boost::timer::cpu_timer();
     csp_v2::Lattice<int, 3, boost::mpl::bool_<false> > speed_3d_lattice_v2(L);
@@ -230,6 +230,27 @@ void test_speed()
 
     itimer = boost::timer::cpu_timer();
     speed_3d_lattice_v2.iterate(nn_sum);
+    itimer.stop();
+    T_MSG(       "  |-- added nn for all elements: ", itimer);
+
+    /*
+     * 3D, L=400, int, hc
+     */
+    L = 400;
+    std::cout << "|-+ V2: hc, int, 3D, L=" << L << " N=" << L * L * L << std::endl;
+
+    ctimer = boost::timer::cpu_timer();
+    csp_v2::Lattice<int, 3, boost::mpl::bool_<true> > speed_3d_hc_lattice_v2(L);
+    ctimer.stop();
+    T_MSG(       "  |-- constructed lattice: ", ctimer);
+
+    itimer = boost::timer::cpu_timer();
+    speed_3d_hc_lattice_v2.iterate(init_one);
+    itimer.stop();
+    T_MSG(       "  |-- set all elements one: ", itimer);
+
+    itimer = boost::timer::cpu_timer();
+    speed_3d_hc_lattice_v2.iterate(nn_sum);
     itimer.stop();
     T_MSG(       "  |-- added nn for all elements: ", itimer);
 

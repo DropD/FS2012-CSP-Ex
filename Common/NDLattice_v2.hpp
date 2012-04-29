@@ -31,18 +31,16 @@ namespace csp_v2
         template<int D>
         struct stencil_iterate<D, boost::mpl::bool_<false> >
         {
-            stencil_iterate() {}
             template<class Lattice, class F>
-            void inline operator() (Lattice& L, F& fcn)
+            inline stencil_iterate(Lattice& L, F& fcn)
             {
                 //std::cout << "non-hc iteration over " << D << " dimensions starting.";
                 //it_timer.start()
                 boost::array<int, D> idx;
-                stencil_iterate<D-1> next_it;
                 for(int i = 0; i < L.size(); ++i)
                 {
                     idx[0] = i;
-                    next_it(L, idx, fcn);
+                    stencil_iterate<D-1>(L, idx, fcn);
                 }
                 fcn();
                 fcn.finalize();
@@ -50,15 +48,14 @@ namespace csp_v2
 
             }
             template<class Lattice, class IndexList, class F>
-            void inline operator() (Lattice& L, IndexList idx, F& fcn)
+            inline stencil_iterate(Lattice& L, IndexList idx, F& fcn)
             {
                 //it_timer.start();
                 int dim = idx.size() - D;
-                stencil_iterate<D-1> next_it;
                 for(int i = 0; i < L.shape()[dim]; ++i)
                 {
                     idx[dim] = i;
-                    next_it(L, idx, fcn);
+                    stencil_iterate<D-1>(L, idx, fcn);
                 }
                 fcn();
                 //std::cout << std::setw(tmsg_offset) << "subiteration " << dim << " -- time: " << it_timer.format() << std::endl;
@@ -71,9 +68,8 @@ namespace csp_v2
         template<>
         struct stencil_iterate<1, boost::mpl::bool_<false> >
         {
-            inline stencil_iterate() {}
             template<class Lattice, class F>
-            void inline operator() (Lattice& L, F& fcn)
+            inline stencil_iterate(Lattice& L, F& fcn)
             {
                 //std::cout << "non-hc iteration over " << 1 << " dimensions starting.";
                 //boost::timer::cpu_timer it_timer;
@@ -86,7 +82,7 @@ namespace csp_v2
                 //std::cout << std::setw(tmsg_offset) << "iteration time: " << it_timer.format() << std::endl;
             }
             template<class Lattice, class IndexList, class F>
-            void inline operator() (Lattice& L, IndexList idx, F& fcn)
+            inline stencil_iterate(Lattice& L, IndexList idx, F& fcn)
             {
                 //boost::timer::cpu_timer it_timer;
                 int dim = idx.size() - 1;
@@ -103,33 +99,30 @@ namespace csp_v2
         template<int D>
         struct stencil_iterate<D, boost::mpl::bool_<true> >
         {
-            inline stencil_iterate() {}
             template<class Lattice, class F>
-            void inline operator() (Lattice& L, F& fcn)
+            inline stencil_iterate(Lattice& L, F& fcn)
             {
                 //std::cout << "hc iteration over " << D << " dimensions starting.";
                 //boost::timer::cpu_timer it_timer;
                 boost::array<int, D> idx;
-                stencil_iterate<D-1> next_it;
                 for(int i = 0; i < L.size(); ++i)
                 {
                     idx[0] = i;
-                    next_it(L, idx, fcn);
+                    stencil_iterate<D-1>(L, idx, fcn);
                 }
                 fcn();
                 fcn.finalize();
                 //std::cout << std::setw(tmsg_offset) << "iteration time: " << it_timer.format() << std::endl;
             }
             template<class Lattice, class IndexList, class F>
-            void inline operator() (Lattice& L, IndexList idx, F& fcn)
+            inline stencil_iterate(Lattice& L, IndexList idx, F& fcn)
             {
                 //boost::timer::cpu_timer it_timer;
                 int dim = idx.size() - D;
-                stencil_iterate<D-1> next_it;
                 for(int i = 0; i < L.size(); ++i)
                 {
                     idx[dim] = i;
-                    next_it(L, idx, fcn);
+                    stencil_iterate<D-1>(L, idx, fcn);
                 }
                 fcn();
                 //std::cout << std::setw(tmsg_offset) << "subiteration " << dim << " -- time: " << it_timer.format() << std::endl;
@@ -139,52 +132,35 @@ namespace csp_v2
         template<>
         struct stencil_iterate<3, boost::mpl::bool_<true> >
         {
-            inline stencil_iterate() {}
             template<class Lattice, class F>
-            void inline operator() (Lattice& L, F& fcn)
+            inline stencil_iterate(Lattice& L, F& fcn)
             {
-                int p;
-                #pragma omp parallel shared(p)
-                {
-                    p = omp_get_num_threads();
-                }
-                std::cout << "iterating <3, true> on " << p << " cores" << std::endl;
+                //omp_set_num_threads(8);
+                //int p;
+                //#pragma omp parallel shared(p)
+                //{
+                //    p = omp_get_num_threads();
+                //}
+                //std::cout << "iterating <3, true> on " << p << " cores" << std::endl;
 
-                std::cout << "hc iteration over " << 3 << " dimensions starting.";
-                boost::timer::cpu_timer itx_timer; itx_timer.stop();
-                boost::timer::cpu_timer ity_timer; ity_timer.stop();
-                boost::timer::cpu_timer itz_timer; itz_timer.stop();
-                itx_timer.start();
                 for(int x = 0; x < L.size(); ++x)
                 {
-                    itx_timer.stop();
-                    ity_timer.start();
                     for(int y = 0; y < L.size(); ++y)
                     {
-                        ity_timer.stop();
-                        itz_timer.start();
-                        #pragma omp parallel for
+                        //#pragma omp parallel for
                         for(int z = 0; z < L.size(); ++z)
                         {
                             fcn(L, x, y, z);
                         }
-                        itz_timer.stop();
-                        ity_timer.start();
                         fcn();
                     }
-                    ity_timer.stop();
-                    itz_timer.start();
                     fcn();
                 }
-                itz_timer.stop();
                 fcn();
                 fcn.finalize();
-                std::cout << std::setw(tmsg_offset) << "subiteration " << 2 << " -- time: " << itz_timer.format() << std::endl;
-                std::cout << std::setw(tmsg_offset) << "subiteration " << 1 << " -- time: " << ity_timer.format() << std::endl;
-                std::cout << std::setw(tmsg_offset) << "iteration time: " << itx_timer.format() << std::endl;
             }
             template<class Lattice, class IndexList, class F>
-            void inline operator() (Lattice& L, IndexList idx, F& fcn)
+            inline stencil_iterate(Lattice& L, IndexList idx, F& fcn)
             {
                 //boost::timer::cpu_timer it_timer;
                 int dim = idx.size() - 3;
@@ -345,8 +321,7 @@ namespace csp_v2
         template<typename F>
         void iterate(F& fcn) 
         {
-            iterate::stencil_iterate<D, HC> iterator;
-            iterator(*this, fcn);
+            iterate::stencil_iterate<D, HC>(*this, fcn);
         }
 
         // stuff
@@ -370,29 +345,22 @@ namespace csp_v2
     template<class T, int D, class HC, class BC, class R>
     Lattice<T, D, HC, BC, R>::Lattice(int L, T init_value) : _lattice(), bc(L)
     {
-//        std::cout << "DEBUG NDLv2.Cons.1.0.0" << std::endl;
         boost::array<int, D> shape;
-//        std::cout << "DEBUG NDLv2.Cons.1.0.1" << " shape.size(): " << shape.size() << std::endl;
         std::fill(shape.begin(), shape.end(), L);
-//        std::cout << "DEBUG NDLv2.Cons.1.0.2" << " shape[2]: " << shape[2] << std::endl;
         //_lattice = boost::multi_array<T, D>(shape);
         //boost::multi_array<T, D> test_array(shape);
         _lattice.resize(shape);
-//        std::cout << "DEBUG NDLv2.Cons.1.0.3" << std::endl;
 
-//        std::cout << "DEBUG NDLv2.Cons.1.1" << std::endl;
         if(init_value != 0)
         {
             csp::algorithm::set_value_<T> init(init_value);
             iterate(init);
         }
 
-//        std::cout << "DEBUG NDLv2.Cons.1.2" << std::endl;
         size_t size = 1;
         for(int i = 0; i <D; ++i)
             size *= L;
         _system_size = size;
-//        std::cout << "DEBUG NDLv2.Cons.2.0" << std::endl;
     }
 
     template<class T, int D, class HC, class BC, class R>
