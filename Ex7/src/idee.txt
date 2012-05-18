@@ -6,6 +6,7 @@ in main:
 Simulation:
     - Keep a list of particles
     - Holds Configuration
+    - Holds the Topology / System info
     - Keep a list of Algorithms to run per step [Strategy]
         * Forces
         * Pos_Vel
